@@ -1,0 +1,16 @@
+# Python / environments
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Runtime data: accounts database, per-job projects, recordings and rendered videos
+workspace/
+
+# Editor / OS / local tooling
+.vscode/
+.idea/
+.claude/
+.DS_Store
+Thumbs.db
+*.log

@@ -1,0 +1,11 @@
+<!doctype html><html><head><meta charset="utf-8"><title>TaskFlow</title>
+<style>body{font-family:sans-serif;max-width:560px;margin:40px auto}nav a{margin-right:12px}li{padding:6px 0}.done{text-decoration:line-through;color:#888}button{padding:6px 12px}</style></head>
+<body><nav><a href="/index.html">Tasks</a><a href="/about.html">About</a></nav>
+<h1>TaskFlow</h1><p>A tiny task manager.</p>
+<form id="f"><input id="title" name="title" placeholder="What needs doing?" style="padding:6px;width:60%"> <button id="add" type="submit">Add task</button></form>
+<ul id="list"></ul>
+<script>
+const list=document.getElementById('list');
+document.getElementById('f').onsubmit=e=>{e.preventDefault();const t=document.getElementById('title');if(!t.value)return;
+const li=document.createElement('li');li.textContent=t.value;li.onclick=()=>li.classList.toggle('done');list.appendChild(li);t.value='';};
+</script></body></html>

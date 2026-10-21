@@ -1,0 +1,933 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Demo Maker</title>
+<style>
+  :root {
+    --bg:#060714; --panel:rgba(255,255,255,.045); --panel-2:rgba(255,255,255,.075);
+    --line:rgba(255,255,255,.09); --line-2:rgba(255,255,255,.18);
+    --text:#eef0ff; --muted:#9aa3cf; --faint:#69729c;
+    --a1:#6366f1; --a2:#8b5cf6; --a3:#22d3ee; --ok:#34d399; --warn:#fbbf24; --err:#fb7185;
+    --grad:linear-gradient(135deg,#6366f1,#8b5cf6 55%,#c084fc);
+    --ease:cubic-bezier(.2,.8,.2,1);
+  }
+  * { box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  body { margin:0; min-height:100vh; background:var(--bg); color:var(--text);
+    font:15px/1.55 "Segoe UI Variable","Segoe UI",system-ui,-apple-system,sans-serif; -webkit-font-smoothing:antialiased; }
+  button, input, select, textarea { font:inherit; color:inherit; }
+  svg.i { width:1.1em; height:1.1em; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; flex:none; }
+  :focus-visible { outline:2px solid var(--a3); outline-offset:2px; }
+
+  /* ---------- animated background ---------- */
+  .bg { position:fixed; inset:0; z-index:-1; overflow:hidden; background:radial-gradient(1200px 700px at 50% -10%, #14153a 0%, var(--bg) 60%); }
+  .bg::after { content:""; position:absolute; inset:0;
+    background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);
+    background-size:64px 64px; -webkit-mask-image:radial-gradient(ellipse at 50% 30%,#000 10%,transparent 70%); mask-image:radial-gradient(ellipse at 50% 30%,#000 10%,transparent 70%); }
+  .orb { position:absolute; border-radius:50%; filter:blur(90px); opacity:.5; animation:drift 24s ease-in-out infinite alternate; }
+  .orb.o1 { width:520px; height:520px; background:#4f46e5; left:-120px; top:-120px; }
+  .orb.o2 { width:460px; height:460px; background:#7c3aed; right:-100px; top:18%; animation-duration:30s; animation-delay:-8s; }
+  .orb.o3 { width:380px; height:380px; background:#0891b2; left:30%; bottom:-160px; opacity:.32; animation-duration:36s; animation-delay:-15s; }
+  @keyframes drift { to { transform:translate(90px,60px) scale(1.15); } }
+
+  /* ---------- top bar ---------- */
+  .topbar { position:sticky; top:0; z-index:30; display:flex; align-items:center; gap:24px; padding:14px 32px;
+    background:rgba(6,7,20,.6); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); border-bottom:1px solid var(--line); }
+  .brand { display:flex; align-items:center; gap:12px; font-weight:700; font-size:18px; letter-spacing:-.01em; white-space:nowrap; }
+  .brand small { display:block; font-size:11px; font-weight:500; color:var(--muted); letter-spacing:.02em; }
+  .logo { width:38px; height:38px; filter:drop-shadow(0 6px 18px rgba(99,102,241,.55)); }
+  .logo .spark { transform-origin:30px 9px; animation:twinkle 3.2s ease-in-out infinite; }
+  @keyframes twinkle { 50% { transform:scale(.55) rotate(45deg); opacity:.6; } }
+
+  .stepper { flex:1; display:flex; justify-content:center; align-items:center; gap:0; min-width:0; }
+  .step { display:flex; align-items:center; gap:10px; background:none; border:0; padding:6px 10px; border-radius:99px; color:var(--faint); cursor:default; white-space:nowrap; transition:color .3s; }
+  .step .dot { width:28px; height:28px; border-radius:50%; display:grid; place-items:center; font-size:12px; font-weight:700;
+    border:1.5px solid var(--line-2); background:rgba(255,255,255,.03); transition:all .4s var(--ease); }
+  .step .dot svg { width:14px; height:14px; stroke-width:3; }
+  .step.done { color:var(--muted); cursor:pointer; } .step.done:hover { color:var(--text); }
+  .step.done .dot { background:var(--ok); border-color:var(--ok); color:#04130d; }
+  .step.active { color:var(--text); }
+  .step.active .dot { background:var(--grad); border-color:transparent; color:#fff; box-shadow:0 0 0 5px rgba(139,92,246,.2); }
+  .link { width:42px; height:2px; background:var(--line); border-radius:2px; position:relative; overflow:hidden; flex:none; }
+  .link::after { content:""; position:absolute; inset:0; background:var(--grad); transform:scaleX(0); transform-origin:left; transition:transform .6s var(--ease); }
+  .link.on::after { transform:scaleX(1); }
+
+  .top-right { display:flex; align-items:center; gap:10px; }
+  .chip { display:inline-flex; align-items:center; gap:9px; padding:7px 13px 7px 10px; border-radius:99px; background:var(--panel); border:1px solid var(--line);
+    cursor:pointer; color:var(--text); font-size:13px; max-width:230px; transition:all .25s; }
+  .chip:hover { background:var(--panel-2); border-color:var(--line-2); transform:translateY(-1px); }
+  .chip .name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .status-dot { width:8px; height:8px; border-radius:50%; background:var(--faint); flex:none; margin-top:7px; }
+  .chip .status-dot { margin-top:0; }
+  .status-dot.ok { background:var(--ok); box-shadow:0 0 0 4px rgba(52,211,153,.18); }
+  .status-dot.bad { background:var(--err); box-shadow:0 0 0 4px rgba(251,113,133,.18); }
+  .status-dot.busy { background:var(--a3); animation:pulse 1.2s infinite; }
+  @keyframes pulse { 50% { box-shadow:0 0 0 7px rgba(34,211,238,0); } 0% { box-shadow:0 0 0 0 rgba(34,211,238,.5); } }
+  .icon-btn { width:40px; height:40px; display:grid; place-items:center; border-radius:12px; background:var(--panel); border:1px solid var(--line); cursor:pointer; color:var(--muted); transition:all .25s; }
+  .icon-btn:hover { color:var(--text); background:var(--panel-2); transform:rotate(25deg); }
+
+  /* ---------- layout ---------- */
+  main { max-width:980px; margin:0 auto; padding:44px 24px 90px; }
+  .view { display:none; }
+  .view.active { display:block; animation:enter .55s var(--ease) both; }
+  @keyframes enter { from { opacity:0; transform:translateY(18px); } }
+  .hero { text-align:center; margin-bottom:34px; }
+  .hero h1 { margin:0 0 10px; font-size:clamp(28px,4.4vw,44px); line-height:1.1; letter-spacing:-.03em; font-weight:800; }
+  .grad-text { background:linear-gradient(120deg,#a5b4fc,#c084fc 45%,#67e8f9); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .hero p { margin:0 auto; max-width:620px; color:var(--muted); font-size:16px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:22px; padding:26px; backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+    box-shadow:0 20px 50px -30px rgba(0,0,0,.7); margin-bottom:18px; }
+  .card h2 { margin:0 0 4px; font-size:16px; font-weight:700; letter-spacing:-.01em; }
+  .card .sub { margin:0 0 18px; color:var(--muted); font-size:13.5px; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media (max-width:760px) { .grid2 { grid-template-columns:1fr; } .topbar { padding:12px 16px 10px; gap:10px 12px; flex-wrap:wrap; } .brand { flex:1; } .brand small { display:none; } .top-right { order:2; }
+    .stepper { order:3; flex-basis:100%; justify-content:space-between; } .step { padding:4px; } .step:not(.active) span.t { display:none; } .link { flex:1; width:auto; } .chip { max-width:160px; } main { padding:28px 16px 70px; } }
+  label.f { display:block; font-size:12.5px; font-weight:600; color:var(--muted); margin:0 0 7px; letter-spacing:.01em; }
+  .field { margin-bottom:16px; } .field:last-child { margin-bottom:0; }
+
+  .input, select.input, textarea.input { width:100%; padding:11px 14px; border-radius:12px; background:rgba(0,0,0,.28); border:1px solid var(--line); outline:0;
+    transition:border-color .2s, box-shadow .2s, background .2s; }
+  .input::placeholder { color:var(--faint); }
+  .input:hover { border-color:var(--line-2); }
+  .input:focus { border-color:var(--a2); box-shadow:0 0 0 4px rgba(139,92,246,.18); background:rgba(0,0,0,.4); }
+  select.input { appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none' stroke='%239aa3cf' stroke-width='2'%3E%3Cpath d='m1 1 5 5 5-5'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 14px center; padding-right:36px; }
+  select.input option { background:#12142e; }
+  textarea.input { resize:vertical; min-height:96px; line-height:1.5; }
+  .input.mono { font-family:Consolas,"Cascadia Mono",monospace; font-size:13px; }
+  .input-icon { position:relative; } .input-icon > svg { position:absolute; left:14px; top:50%; transform:translateY(-50%); color:var(--faint); }
+  .input-icon .input { padding-left:42px; }
+  .invalid { animation:shake .4s; border-color:var(--err) !important; }
+  @keyframes shake { 20%,60% { transform:translateX(-6px); } 40%,80% { transform:translateX(6px); } }
+
+  .seg { display:inline-flex; padding:4px; gap:2px; border-radius:13px; background:rgba(0,0,0,.28); border:1px solid var(--line); flex-wrap:wrap; }
+  .seg input { position:absolute; opacity:0; pointer-events:none; }
+  .seg label { padding:7px 14px; border-radius:9px; font-size:13px; font-weight:600; color:var(--muted); cursor:pointer; transition:all .25s var(--ease); user-select:none; }
+  .seg label:hover { color:var(--text); }
+  .seg input:checked + label { background:var(--grad); color:#fff; box-shadow:0 6px 16px -6px rgba(139,92,246,.7); }
+  .seg input:focus-visible + label { outline:2px solid var(--a3); }
+
+  .btn { position:relative; overflow:hidden; display:inline-flex; align-items:center; justify-content:center; gap:10px; padding:12px 22px; border:0; border-radius:14px; font-weight:700; font-size:15px; cursor:pointer;
+    color:#fff; background:var(--grad); box-shadow:0 12px 30px -10px rgba(139,92,246,.75); transition:transform .25s var(--ease), box-shadow .25s, opacity .2s; }
+  .btn::after { content:""; position:absolute; inset:0; background:linear-gradient(105deg,transparent 30%,rgba(255,255,255,.35) 50%,transparent 70%); transform:translateX(-120%); }
+  .btn:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 18px 36px -10px rgba(139,92,246,.9); }
+  .btn:hover:not(:disabled)::after { transform:translateX(120%); transition:transform .8s var(--ease); }
+  .btn:active:not(:disabled) { transform:translateY(0) scale(.98); }
+  .btn:disabled { opacity:.5; cursor:not-allowed; }
+  .btn .i { transition:transform .25s var(--ease); } .btn:hover:not(:disabled) .i.go { transform:translateX(4px); }
+  .btn.lg { padding:15px 30px; font-size:16px; border-radius:16px; }
+  .btn.ghost { background:var(--panel); box-shadow:none; border:1px solid var(--line); color:var(--text); font-weight:600; }
+  .btn.ghost:hover:not(:disabled) { background:var(--panel-2); border-color:var(--line-2); box-shadow:none; }
+  .btn.sm { padding:8px 14px; font-size:13px; border-radius:11px; }
+  .btn.danger { color:var(--err); }
+  .actions { display:flex; gap:12px; justify-content:space-between; align-items:center; margin-top:26px; flex-wrap:wrap; }
+  .actions .right { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+
+  .tags { display:flex; flex-wrap:wrap; gap:8px; }
+  .tag { padding:6px 12px; border-radius:99px; font-size:12.5px; border:1px solid var(--line); background:var(--panel); color:var(--muted); cursor:pointer; transition:all .2s; }
+  .tag:hover { color:var(--text); border-color:var(--a2); background:rgba(139,92,246,.12); transform:translateY(-1px); }
+  .tag.static { cursor:default; color:#c7d2fe; background:rgba(99,102,241,.14); border-color:rgba(99,102,241,.3); } .tag.static:hover { transform:none; }
+
+  .switches { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  @media (max-width:760px) { .switches { grid-template-columns:1fr; } }
+  .sw { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; border-radius:13px; background:rgba(0,0,0,.2); border:1px solid var(--line); cursor:pointer; transition:border-color .2s; }
+  .sw:hover { border-color:var(--line-2); }
+  .sw b { display:block; font-size:13.5px; font-weight:600; } .sw small { color:var(--faint); font-size:12px; }
+  .sw input { position:absolute; opacity:0; }
+  .sw .track { width:40px; height:23px; flex:none; border-radius:99px; background:rgba(255,255,255,.12); position:relative; transition:background .3s; }
+  .sw .track::after { content:""; position:absolute; left:3px; top:3px; width:17px; height:17px; border-radius:50%; background:#fff; transition:transform .3s var(--ease); box-shadow:0 2px 6px rgba(0,0,0,.4); }
+  .sw input:checked ~ .track { background:var(--a2); } .sw input:checked ~ .track::after { transform:translateX(17px); }
+  .sw input:focus-visible ~ .track { outline:2px solid var(--a3); outline-offset:2px; }
+
+  input[type=range] { -webkit-appearance:none; appearance:none; width:100%; height:6px; border-radius:6px; background:rgba(255,255,255,.12); outline:0; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:20px; height:20px; border-radius:50%; background:#fff; border:5px solid var(--a2); cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,.4); transition:transform .2s; }
+  input[type=range]::-webkit-slider-thumb:hover { transform:scale(1.15); }
+  .range-row { display:flex; align-items:center; gap:14px; } .range-row output { min-width:58px; text-align:right; font-weight:700; font-variant-numeric:tabular-nums; }
+
+  .drop { border:1.5px dashed var(--line-2); border-radius:16px; padding:26px; text-align:center; color:var(--muted); cursor:pointer; transition:all .25s; background:rgba(0,0,0,.15); }
+  .drop:hover, .drop.over { border-color:var(--a2); background:rgba(139,92,246,.1); color:var(--text); }
+  .drop .i { width:28px; height:28px; margin-bottom:6px; color:var(--a2); } .drop b { color:var(--text); }
+
+  .callout { display:flex; gap:12px; padding:13px 15px; border-radius:14px; font-size:13.5px; border:1px solid var(--line); background:rgba(0,0,0,.2); color:var(--muted); margin-top:16px; align-items:flex-start; }
+  .callout.warn { border-color:rgba(251,191,36,.3); background:rgba(251,191,36,.07); color:#fde68a; }
+  .callout.err { border-color:rgba(251,113,133,.35); background:rgba(251,113,133,.08); color:#fecdd3; }
+  .callout .i { margin-top:3px; }
+  details.adv { margin-top:18px; } details.adv summary { cursor:pointer; color:var(--muted); font-weight:600; font-size:13.5px; list-style:none; display:flex; align-items:center; gap:8px; padding:6px 0; }
+  details.adv summary::-webkit-details-marker { display:none; } details.adv summary .i { transition:transform .3s; } details.adv[open] summary .i { transform:rotate(90deg); }
+  details.adv .inner { padding-top:14px; }
+
+  /* ---------- plan header ---------- */
+  .app-head { display:flex; gap:16px; align-items:center; margin-bottom:16px; }
+  .app-badge { width:54px; height:54px; border-radius:16px; display:grid; place-items:center; font-size:24px; font-weight:800; background:var(--grad); box-shadow:0 12px 28px -10px rgba(139,92,246,.8); flex:none; }
+  .app-head h2 { font-size:22px; letter-spacing:-.02em; } .app-head p { margin:2px 0 0; color:var(--muted); font-size:14px; }
+
+  /* ---------- storyboard ---------- */
+  .stats { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:18px; }
+  .stat { padding:8px 14px; border-radius:12px; background:var(--panel); border:1px solid var(--line); font-size:13px; color:var(--muted); } .stat b { color:var(--text); font-size:15px; margin-right:4px; }
+  .steps { display:flex; flex-direction:column; gap:12px; }
+  .sb { display:grid; grid-template-columns:44px 1fr auto; gap:14px; padding:16px; border-radius:18px; background:var(--panel); border:1px solid var(--line); transition:border-color .25s, transform .3s var(--ease), box-shadow .25s;
+    animation:enter .5s var(--ease) both; animation-delay:calc(var(--i,0) * 45ms); }
+  .sb:hover, .sb:focus-within { border-color:rgba(139,92,246,.45); box-shadow:0 14px 34px -22px rgba(139,92,246,.8); }
+  .sb .num { width:44px; height:44px; border-radius:14px; display:grid; place-items:center; font-weight:800; background:rgba(99,102,241,.16); color:#c7d2fe; border:1px solid rgba(99,102,241,.3); }
+  .sb .row { display:grid; grid-template-columns:130px 1fr 1fr; gap:10px; margin-bottom:10px; }
+  @media (max-width:760px) { .sb { grid-template-columns:36px 1fr; } .sb .ctl { grid-column:1 / -1; flex-direction:row !important; } .sb .row { grid-template-columns:1fr; } }
+  .sb textarea { min-height:68px; }
+  .sb .meta { margin-top:6px; font-size:12px; color:var(--faint); display:flex; justify-content:space-between; }
+  .ctl { display:flex; flex-direction:column; gap:6px; }
+  .mini { width:34px; height:34px; display:grid; place-items:center; border-radius:10px; border:1px solid var(--line); background:transparent; color:var(--muted); cursor:pointer; transition:all .2s; }
+  .mini:hover { color:var(--text); background:var(--panel-2); } .mini.del:hover { color:var(--err); border-color:rgba(251,113,133,.4); }
+  .add-step { padding:16px; border-radius:18px; border:1.5px dashed var(--line-2); background:transparent; color:var(--muted); cursor:pointer; font-weight:600; transition:all .25s; display:flex; justify-content:center; gap:8px; align-items:center; }
+  .add-step:hover { color:var(--text); border-color:var(--a2); background:rgba(139,92,246,.08); }
+
+  /* ---------- work panel ---------- */
+  .work { text-align:center; padding:46px 30px 34px; }
+  .ring { width:92px; height:92px; margin:0 auto 22px; border-radius:50%; position:relative; background:conic-gradient(from 0deg,transparent 0 25%,var(--a3),var(--a2),var(--a1),transparent); animation:spin 1.3s linear infinite;
+    -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 7px),#000 calc(100% - 6px)); mask:radial-gradient(farthest-side,transparent calc(100% - 7px),#000 calc(100% - 6px)); }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .ring-wrap { position:relative; width:92px; margin:0 auto 22px; } .ring-wrap .ring { margin:0; } .ring-wrap .logo-mini { position:absolute; inset:0; display:grid; place-items:center; }
+  .ring-wrap .logo-mini svg { width:38px; height:38px; animation:float 2.4s ease-in-out infinite; } @keyframes float { 50% { transform:translateY(-4px); } }
+  .work h2 { font-size:22px; margin:0 0 6px; letter-spacing:-.02em; } .work .sub { color:var(--muted); margin:0 0 26px; }
+  .phases { list-style:none; margin:0 auto; padding:0; max-width:420px; text-align:left; display:flex; flex-direction:column; gap:4px; }
+  .phases li { display:flex; align-items:center; gap:14px; padding:10px 14px; border-radius:13px; color:var(--faint); transition:all .4s var(--ease); }
+  .phases li .b { width:24px; height:24px; border-radius:50%; border:1.5px solid var(--line-2); display:grid; place-items:center; flex:none; transition:all .4s var(--ease); }
+  .phases li .b svg { width:13px; height:13px; stroke-width:3.2; stroke-dasharray:24; stroke-dashoffset:24; }
+  .phases li small { display:block; color:var(--faint); font-size:12px; }
+  .phases li.active { color:var(--text); background:rgba(99,102,241,.12); }
+  .phases li.active .b { border-color:var(--a3); box-shadow:0 0 0 4px rgba(34,211,238,.15); animation:pulse 1.4s infinite; }
+  .phases li.done { color:var(--muted); } .phases li.done .b { background:var(--ok); border-color:var(--ok); color:#04130d; } .phases li.done .b svg { animation:draw .5s forwards; }
+  @keyframes draw { to { stroke-dashoffset:0; } }
+  .bar { height:5px; max-width:420px; margin:24px auto 0; border-radius:5px; background:rgba(255,255,255,.08); overflow:hidden; }
+  .bar i { display:block; height:100%; width:30%; background:linear-gradient(90deg,var(--a1),var(--a3),var(--a1)); background-size:200% 100%; animation:slide 1.6s linear infinite; transition:width .8s var(--ease); border-radius:5px; }
+  @keyframes slide { to { background-position:-200% 0; } }
+  .logtoggle { margin-top:22px; font-size:12.5px; color:var(--faint); background:none; border:0; cursor:pointer; } .logtoggle:hover { color:var(--text); }
+  .logbox { display:none; margin-top:12px; text-align:left; max-height:210px; overflow:auto; padding:12px 14px; border-radius:12px; background:rgba(0,0,0,.4); border:1px solid var(--line);
+    font:12px/1.55 Consolas,"Cascadia Mono",monospace; color:#aab3e6; white-space:pre-wrap; word-break:break-word; } .logbox.open { display:block; }
+
+  /* ---------- result ---------- */
+  .player { position:relative; border-radius:20px; overflow:hidden; background:#000; border:1px solid var(--line-2); box-shadow:0 0 0 1px rgba(255,255,255,.04), 0 40px 90px -30px rgba(99,102,241,.6); }
+  .player video { display:block; width:100%; aspect-ratio:16/9; background:#000; }
+  .done-badge { display:inline-flex; align-items:center; gap:8px; padding:6px 14px; border-radius:99px; background:rgba(52,211,153,.12); color:var(--ok); font-weight:700; font-size:13px; margin-bottom:14px; }
+  .confetti i { position:fixed; top:-12px; width:9px; height:14px; border-radius:2px; opacity:.95; animation:fall 2.4s ease-in forwards; pointer-events:none; z-index:60; }
+  @keyframes fall { to { transform:translate(var(--dx),105vh) rotate(var(--r)); opacity:.9; } }
+
+  /* ---------- settings drawer ---------- */
+  .scrim { position:fixed; inset:0; background:rgba(3,4,12,.6); backdrop-filter:blur(3px); opacity:0; pointer-events:none; transition:opacity .35s; z-index:40; }
+  .scrim.open { opacity:1; pointer-events:auto; }
+  .drawer { position:fixed; top:0; right:0; bottom:0; width:min(480px,100vw); z-index:50; transform:translateX(104%); transition:transform .5s var(--ease); display:flex; flex-direction:column;
+    background:rgba(13,14,34,.94); backdrop-filter:blur(24px); -webkit-backdrop-filter:blur(24px); border-left:1px solid var(--line-2); box-shadow:-30px 0 80px rgba(0,0,0,.5); }
+  .drawer.open { transform:none; }
+  .drawer header { display:flex; justify-content:space-between; align-items:center; padding:22px 26px; border-bottom:1px solid var(--line); }
+  .drawer header h2 { margin:0; font-size:19px; letter-spacing:-.01em; } .drawer header p { margin:2px 0 0; color:var(--muted); font-size:13px; }
+  .drawer .body { flex:1; overflow:auto; padding:24px 26px 40px; }
+  .sect { margin-bottom:30px; } .sect h3 { margin:0 0 4px; font-size:12px; text-transform:uppercase; letter-spacing:.1em; color:var(--faint); } .sect > p { margin:0 0 14px; color:var(--muted); font-size:13px; }
+  .providers { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:18px; }
+  .prov { position:relative; padding:16px 8px 12px; border-radius:16px; background:var(--panel); border:1.5px solid var(--line); cursor:pointer; text-align:center; transition:all .3s var(--ease); }
+  .prov input { position:absolute; opacity:0; }
+  .prov:hover { transform:translateY(-3px); border-color:var(--line-2); }
+  .prov .pi { width:42px; height:42px; margin:0 auto 8px; border-radius:13px; display:grid; place-items:center; font-size:20px; }
+  .prov b { display:block; font-size:13.5px; } .prov small { color:var(--faint); font-size:11.5px; }
+  .prov:has(input:checked) { border-color:var(--a2); background:rgba(139,92,246,.14); box-shadow:0 14px 30px -16px rgba(139,92,246,.9); }
+  .prov:has(input:checked)::after { content:""; position:absolute; top:9px; right:9px; width:9px; height:9px; border-radius:50%; background:var(--ok); box-shadow:0 0 0 3px rgba(52,211,153,.2); }
+  .prov:has(input:focus-visible) { outline:2px solid var(--a3); }
+  .row-btn { display:flex; gap:10px; } .row-btn .input { flex:1; }
+  .eye { position:absolute; right:6px; top:50%; transform:translateY(-50%); } .pw { position:relative; } .pw .input { padding-right:46px; }
+  .models { display:flex; flex-wrap:wrap; gap:7px; margin-top:10px; max-height:132px; overflow:auto; }
+  .models .tag.sel { background:var(--grad); color:#fff; border-color:transparent; }
+  .conn { display:flex; align-items:flex-start; gap:9px; font-size:13px; margin-top:12px; color:var(--muted); min-height:22px; }
+  .saved { color:var(--ok); font-size:12px; opacity:0; transition:opacity .3s; } .saved.show { opacity:1; }
+  .hl { animation:glow 1.4s 2; } @keyframes glow { 50% { box-shadow:0 0 0 5px rgba(251,191,36,.35); border-color:var(--warn); } }
+
+  /* ---------- toasts ---------- */
+  #toasts { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); z-index:80; display:flex; flex-direction:column; gap:10px; align-items:center; width:min(520px,92vw); pointer-events:none; }
+  .toast { pointer-events:auto; display:flex; align-items:flex-start; gap:12px; padding:13px 16px; border-radius:14px; background:rgba(20,22,48,.96); border:1px solid var(--line-2); box-shadow:0 20px 50px rgba(0,0,0,.55);
+    animation:toast .45s var(--ease) both; font-size:14px; width:100%; } .toast.error { border-color:rgba(251,113,133,.5); } .toast.error .i { color:var(--err); } .toast.info .i { color:var(--a3); } .toast.ok .i { color:var(--ok); }
+  .toast.out { animation:toastout .3s forwards; } @keyframes toast { from { opacity:0; transform:translateY(20px) scale(.96); } } @keyframes toastout { to { opacity:0; transform:translateY(10px); } }
+  .hidden { display:none !important; }
+  @media (prefers-reduced-motion:reduce) { *, *::before, *::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; } }
+</style>
+<link rel="stylesheet" href="/static/landing.css">
+</head>
+<body>
+<div class="bg" aria-hidden="true"><div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div></div>
+
+<!-- ================= OPENING PAGE ================= -->
+<div id="landing" class="hidden">
+  <nav class="land-nav" id="landNav"><div class="container">
+    <a class="brand" href="#/" aria-label="Demo Maker home"><svg class="logo" viewBox="0 0 40 40" aria-hidden="true"><use href="#logo-mark"/></svg><div>Demo Maker</div></a>
+    <div class="nav-links"><button data-scroll="how">How it works</button><button data-scroll="features">Features</button><button data-scroll="privacy">Privacy</button></div>
+    <a class="btn ghost sm" id="navAuth" href="#/auth">Sign in</a>
+  </div></nav>
+
+  <header class="hero-land"><div class="container hero-grid">
+    <div>
+      <span class="eyebrow"><i></i>AI demo-video studio · runs on your computer</span>
+      <h1>Turn any project into a <span class="grad-text">narrated demo video.</span></h1>
+      <p class="lead">Demo Maker reads your code, runs your app, records a real walkthrough and adds a natural voice-over, all automatically. Describe the video you want, review the script, and get a finished MP4.</p>
+      <div class="hero-cta">
+        <a class="btn xl" id="ctaGo" href="#/auth">Let's go <span data-icon="arrow" class="go"></span></a>
+        <button class="btn ghost lg" data-scroll="how">See how it works</button>
+      </div>
+      <div class="trust"><span><span data-icon="cpu"></span>Ollama · Gemini · OpenAI</span><span><span data-icon="globe"></span>17 narration languages</span><span><span data-icon="lock"></span>Private by default</span></div>
+    </div>
+    <div class="mock" aria-hidden="true">
+      <div class="mock-win">
+        <div class="mock-bar"><i></i><i></i><i></i><span class="mock-url">localhost:5173</span><span class="mock-rec"><i></i>REC</span></div>
+        <div class="mock-body">
+          <div class="mock-h">TaskFlow</div>
+          <div class="mock-field"><div class="mock-input"><span class="mock-typed">Buy milk</span><span class="mock-caret"></span></div><div class="mock-btn">Add task</div></div>
+          <ul class="mock-list"><li>Finish the quarterly report</li><li class="new">Buy milk</li></ul>
+          <div class="mock-ripple"></div>
+          <svg class="mock-cursor" viewBox="0 0 24 24"><path d="M4 2l0 17 4.5-4 3 7 3-1.3-3-6.8 6.3 0z" fill="#111" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="mock-caption">“Just type a task and press add. It's that simple.”</div>
+      </div>
+      <div class="mock-wave" id="mockWave"></div>
+      <span class="float-chip fc1"><span data-icon="mic"></span>AI voice-over</span>
+      <span class="float-chip fc2"><span data-icon="search"></span>Auto-zoom</span>
+      <span class="float-chip fc3"><span data-icon="cc"></span>Captions</span>
+    </div>
+  </div></header>
+
+  <section class="section" id="how"><div class="container">
+    <div class="sec-head reveal"><span class="sec-tag">How it works</span><h2>From a folder of code to a finished video in four steps</h2><p>You stay in control the whole way. Nothing is recorded until you approve the script.</p></div>
+    <div class="how">
+      <div class="how-card reveal" style="--d:0"><div class="how-num">1</div><h3>Point it at your project</h3><p>Choose a folder or drop a zip, then describe the video: audience, focus, tone and length.</p></div>
+      <div class="how-card reveal" style="--d:1"><div class="how-num">2</div><h3>It understands and runs it</h3><p>The AI reads your files, works out how to start the app, and explores every page like a first-time user.</p></div>
+      <div class="how-card reveal" style="--d:2"><div class="how-num">3</div><h3>Review the storyboard</h3><p>Edit every step and every word of narration. Reorder, remove or add steps until it's right.</p></div>
+      <div class="how-card reveal" style="--d:3"><div class="how-num">4</div><h3>Get your video</h3><p>A real browser records the app in sync with the voice-over, then adds zoom, captions, music and title cards.</p></div>
+    </div>
+    <p class="reveal" style="text-align:center;color:var(--faint);font-size:13.5px;margin:26px 0 0">Works with web projects today: static sites, React/Vue/Vite, Flask, FastAPI, Express and more.</p>
+  </div></section>
+
+  <section class="section" id="features" style="padding-top:20px"><div class="container">
+    <div class="sec-head reveal"><span class="sec-tag">Features</span><h2>Everything a good demo needs</h2><p>The polish that normally takes a video editor and an afternoon.</p></div>
+    <div class="features">
+      <div class="feat reveal" style="--d:0"><div class="feat-ic" data-icon="search"></div><h3>Understands your project</h3><p>Reads your README, config and code to find out what your app is and how to run it, and repairs the plan if it fails.</p></div>
+      <div class="feat reveal" style="--d:1"><div class="feat-ic" data-icon="film"></div><h3>Real screen recording</h3><p>Drives your actual app in a browser: clicking, typing sample data and scrolling, so the demo shows what's really there.</p></div>
+      <div class="feat reveal" style="--d:2"><div class="feat-ic" data-icon="mic"></div><h3>Natural voice-over</h3><p>A script is written and spoken in 17 languages, with free neural voices, OpenAI voices, or fully offline system voices.</p></div>
+      <div class="feat reveal" style="--d:0"><div class="feat-ic" data-icon="cpu"></div><h3>Bring your own AI</h3><p>Run it privately with a local Ollama model, or plug in a Gemini or OpenAI key. Switch any time in Settings.</p></div>
+      <div class="feat reveal" style="--d:1"><div class="feat-ic" data-icon="sparkle"></div><h3>Professional polish</h3><p>A visible cursor with click ripples, smooth auto-zoom, burned-in captions, soft background music and title cards.</p></div>
+      <div class="feat reveal" style="--d:2"><div class="feat-ic" data-icon="edit"></div><h3>You stay in control</h3><p>Every step and line of narration is editable before anything is recorded, and re-rendering is one click.</p></div>
+    </div>
+  </div></section>
+
+  <section class="section" id="privacy" style="padding-top:20px"><div class="container">
+    <div class="band reveal"><div class="band-ic" data-icon="lock"></div><div><h3>Private by design</h3><p>Demo Maker runs on your own computer. Your code and recordings stay here. They only reach a cloud AI if you choose to connect one, and accounts are stored locally, with hashed passwords.</p></div><a class="btn ghost" href="#/auth">Create your account</a></div>
+  </div></section>
+
+  <section class="final"><div class="container reveal">
+    <h2>Ready to make your <span class="grad-text">first demo?</span></h2>
+    <p>Setup takes a couple of minutes: create an account, pick an AI model, and point it at a project.</p>
+    <a class="btn xl" href="#/auth" data-cta>Let's go <span data-icon="arrow" class="go"></span></a>
+  </div></section>
+  <footer class="foot"><div class="container"><span>© Demo Maker · narrated demos, automatically</span><span>Runs locally on 127.0.0.1</span></div></footer>
+</div>
+
+<!-- ================= SIGN IN / CREATE ACCOUNT ================= -->
+<div id="authPage" class="hidden"><div class="auth-page">
+  <aside class="auth-side">
+    <a class="brand" href="#/"><svg class="logo" viewBox="0 0 40 40" aria-hidden="true"><use href="#logo-mark"/></svg><div>Demo Maker</div></a>
+    <div>
+      <h2>Your product, <span class="grad-text">explained in minutes.</span></h2>
+      <p>Sign in to your workspace and turn your next project into a polished, narrated demo.</p>
+      <ul class="perks">
+        <li><span class="tick" data-icon="check"></span><span>Reads and runs your project automatically</span></li>
+        <li><span class="tick" data-icon="check"></span><span>Script, voice-over and captions written for you</span></li>
+        <li><span class="tick" data-icon="check"></span><span>Works with local models, Gemini or OpenAI</span></li>
+        <li><span class="tick" data-icon="check"></span><span>Your work and settings stay private to your account</span></li>
+      </ul>
+    </div>
+    <span style="color:var(--faint);font-size:13px">Accounts are stored on this computer only.</span>
+    <div class="orbit" aria-hidden="true"></div>
+  </aside>
+  <section class="auth-main"><div class="auth-box">
+    <div class="auth-top"><button class="back-link" id="authBack"><span data-icon="back"></span>Back to home</button></div>
+    <div class="card">
+      <h1 id="authTitle">Welcome back</h1><p class="sub" id="authSub">Sign in to continue to your workspace.</p>
+      <div class="seg" role="tablist" aria-label="Account"><input type="radio" name="authTab" id="tabLogin" value="login" checked><label for="tabLogin">Sign in</label><input type="radio" name="authTab" id="tabReg" value="register"><label for="tabReg">Create account</label></div>
+      <div class="callout err form-error" id="authError" role="alert"><span data-icon="alert"></span><span id="authErrorText"></span></div>
+
+      <form class="auth-form" id="formLogin" novalidate>
+        <div class="field"><label class="f" for="liEmail">Email</label><div class="input-icon"><span data-icon="mail"></span><input class="input" id="liEmail" type="email" autocomplete="email" placeholder="you@example.com" required></div><div class="field-err" id="liEmailErr"></div></div>
+        <div class="field"><label class="f" for="liPass">Password</label><div class="pw"><input class="input" id="liPass" type="password" autocomplete="current-password" placeholder="Your password" required><button type="button" class="icon-btn eye" data-eye="liPass" aria-label="Show password"></button></div><div class="field-err" id="liPassErr"></div></div>
+        <button class="btn block" type="submit"><span class="lbl">Sign in</span></button>
+        <p class="switch-line">New here? <button type="button" data-tab="register">Create an account</button></p>
+      </form>
+
+      <form class="auth-form hidden" id="formReg" novalidate>
+        <div class="field"><label class="f" for="rgName">Your name</label><div class="input-icon"><span data-icon="user"></span><input class="input" id="rgName" autocomplete="name" placeholder="Ada Lovelace" maxlength="60" required></div><div class="field-err" id="rgNameErr"></div></div>
+        <div class="field"><label class="f" for="rgEmail">Email</label><div class="input-icon"><span data-icon="mail"></span><input class="input" id="rgEmail" type="email" autocomplete="email" placeholder="you@example.com" required></div><div class="field-err" id="rgEmailErr"></div></div>
+        <div class="field"><label class="f" for="rgPass">Password</label><div class="pw"><input class="input" id="rgPass" type="password" autocomplete="new-password" placeholder="At least 8 characters" required><button type="button" class="icon-btn eye" data-eye="rgPass" aria-label="Show password"></button></div>
+          <div class="strength" id="strength" data-s="0"><i></i><i></i><i></i><i></i></div><div class="strength-label" id="strengthLabel">Use 8+ characters. A mix of letters, numbers and symbols is stronger.</div><div class="field-err" id="rgPassErr"></div></div>
+        <button class="btn block" type="submit"><span class="lbl">Create account</span></button>
+        <p class="switch-line">Already have an account? <button type="button" data-tab="login">Sign in</button></p>
+      </form>
+      <p class="fine"><span data-icon="shield"></span>Your password is hashed and never leaves this computer.</p>
+    </div>
+  </div></section>
+</div></div>
+
+<!-- ================= APP ================= -->
+<div id="appShell" class="hidden">
+<header class="topbar">
+  <a class="brand" href="#/" aria-label="Demo Maker home" title="Home">
+    <svg class="logo" viewBox="0 0 40 40" aria-hidden="true"><use href="#logo-mark"/></svg>
+    <div>Demo Maker<small>Narrated product demos, automatically</small></div>
+  </a>
+  <nav class="stepper" id="stepper" aria-label="Progress"></nav>
+  <div class="top-right">
+    <button class="chip" id="modelChip" title="AI model settings"><span class="status-dot" id="chipDot"></span><span class="name" id="chipName">Choose a model</span></button>
+    <button class="icon-btn" id="btnSettings" aria-label="Open settings" title="Settings"></button>
+    <div class="user">
+      <button class="avatar" id="btnUser" aria-haspopup="menu" aria-expanded="false" aria-label="Account menu"></button>
+      <div class="menu hidden" id="menu" role="menu">
+        <div class="who"><b id="menuName"></b><small id="menuEmail"></small></div>
+        <button role="menuitem" id="menuSettings"><span data-icon="sliders"></span>AI model &amp; voice settings</button>
+        <button role="menuitem" id="menuHome"><span data-icon="folder"></span>Home page</button>
+        <button role="menuitem" class="out" id="menuOut"><span data-icon="logout"></span>Sign out</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- 1 · PROJECT -->
+  <section class="view" data-view="project">
+    <div class="hero">
+      <h1>Turn any project into a <span class="grad-text">narrated demo video</span></h1>
+      <p>Point Demo Maker at your web project, describe the video you want, and it will run the app, record it, write the script and add the voice-over.</p>
+    </div>
+
+    <div class="card">
+      <h2>Your project</h2><p class="sub">Choose where the code lives on this computer.</p>
+      <div class="seg" role="radiogroup" aria-label="Project source" style="margin-bottom:16px">
+        <input type="radio" name="src" id="srcPath" value="path" checked><label for="srcPath">Folder path</label>
+        <input type="radio" name="src" id="srcZip" value="zip"><label for="srcZip">Upload .zip</label>
+      </div>
+      <div id="srcPathBox" class="input-icon"><span data-icon="folder"></span><input class="input" id="path" placeholder="C:\work\my-app" autocomplete="off" spellcheck="false"></div>
+      <div id="srcZipBox" class="hidden">
+        <div class="drop" id="dropzone" tabindex="0" role="button"><span data-icon="upload"></span><div id="dropText"><b>Drop a .zip here</b> or click to browse</div></div>
+        <input type="file" id="zip" accept=".zip" class="hidden">
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>What should the video be like?</h2><p class="sub">Describe the audience, focus and feel. The more specific, the better the script.</p>
+      <textarea class="input" id="desc" rows="4" placeholder="e.g. A 45-second energetic walkthrough for investors. Focus on how fast it is to create a task, then show the dashboard."></textarea>
+      <div class="tags" style="margin-top:12px" id="examples"></div>
+    </div>
+
+    <div class="card">
+      <h2>Style &amp; polish</h2><p class="sub">Voice engine and AI model live in <a href="#" id="openSettings2" style="color:#a5b4fc">Settings</a>.</p>
+      <div class="grid2">
+        <div class="field"><label class="f" for="length">Target length</label><div class="range-row"><input type="range" id="length" min="20" max="180" step="5" value="60"><output id="lengthOut">60 s</output></div></div>
+        <div class="field"><label class="f" for="language">Narration language</label><select class="input" id="language"></select></div>
+      </div>
+      <div class="field"><label class="f">Tone</label>
+        <div class="seg" id="tone" role="radiogroup" aria-label="Tone"></div></div>
+      <div class="switches" style="margin-bottom:16px">
+        <label class="sw"><span><b>Cursor &amp; click ripples</b><small>Shows where the action happens</small></span><input type="checkbox" id="cursor"><span class="track"></span></label>
+        <label class="sw"><span><b>Auto-zoom</b><small>Zooms in on clicks and typing</small></span><input type="checkbox" id="zoom"><span class="track"></span></label>
+        <label class="sw"><span><b>Captions</b><small>Burned in, plus a .srt file</small></span><input type="checkbox" id="subs"><span class="track"></span></label>
+        <label class="sw"><span><b>Title &amp; end cards</b><small>3-second intro and outro</small></span><input type="checkbox" id="cards"><span class="track"></span></label>
+      </div>
+      <div class="field"><label class="f">Background music</label>
+        <div class="seg" id="music" role="radiogroup" aria-label="Music">
+          <input type="radio" name="music" id="mNone" value="none"><label for="mNone">Off</label>
+          <input type="radio" name="music" id="mAmb" value="ambient"><label for="mAmb">Soft ambient</label>
+          <input type="radio" name="music" id="mUp" value="upload"><label for="mUp">My own file</label>
+        </div>
+        <input type="file" id="musicFile" accept="audio/*" class="input hidden" style="margin-top:10px">
+        <div class="hint" style="color:var(--faint);font-size:12px;margin-top:8px">Music is lowered automatically while the narrator speaks.</div>
+      </div>
+    </div>
+    <div class="actions"><span></span><button class="btn lg" id="btnAnalyze">Analyze project <span data-icon="arrow" class="go"></span></button></div>
+  </section>
+
+  <!-- 2 · PLAN -->
+  <section class="view" data-view="plan">
+    <div class="work card hidden" data-work="analyze"></div>
+    <div data-err></div>
+    <div data-body class="hidden">
+      <div class="hero"><h1>Here's how I'll <span class="grad-text">run your app</span></h1><p>Check the commands below. They run on your machine inside the project folder.</p></div>
+      <div class="card">
+        <div class="app-head"><div class="app-badge" id="appBadge">A</div><div><h2 id="appName"></h2><p id="appTag"></p></div></div>
+        <p id="appSummary" style="color:var(--muted);margin:0 0 14px"></p>
+        <div class="tags" id="appFeatures"></div>
+        <div class="callout hidden" id="planNotes"><span data-icon="info"></span><span></span></div>
+      </div>
+      <div class="card">
+        <div class="grid2">
+          <div class="field"><label class="f" for="pStart">Start command</label><input class="input mono" id="pStart" spellcheck="false"></div>
+          <div class="field"><label class="f" for="pUrl">App URL</label><input class="input mono" id="pUrl" spellcheck="false"></div>
+        </div>
+        <details class="adv"><summary><span data-icon="chevron"></span>Advanced: install, sample data, environment</summary>
+          <div class="inner">
+            <div class="grid2">
+              <div class="field"><label class="f" for="pInstall">Install commands (one per line)</label><textarea class="input mono" id="pInstall" rows="3" spellcheck="false"></textarea></div>
+              <div class="field"><label class="f" for="pSeed">Sample-data commands (one per line)</label><textarea class="input mono" id="pSeed" rows="3" spellcheck="false"></textarea></div>
+            </div>
+            <div class="field"><label class="f" for="pEnv">Environment variables (KEY=value per line)</label><textarea class="input mono" id="pEnv" rows="3" spellcheck="false" placeholder="API keys or database settings your project needs"></textarea></div>
+          </div>
+        </details>
+        <div class="callout"><span data-icon="shield"></span><span>Python projects are installed into an isolated environment, so your own Python stays untouched. Apps that write to a database will write to your real one.</span></div>
+      </div>
+      <div class="actions"><button class="btn ghost" data-go="project"><span data-icon="back"></span>Back</button><button class="btn lg" id="btnStoryboard">Run app &amp; write storyboard <span data-icon="arrow" class="go"></span></button></div>
+    </div>
+  </section>
+
+  <!-- 3 · STORYBOARD -->
+  <section class="view" data-view="storyboard">
+    <div class="work card hidden" data-work="storyboard"></div>
+    <div data-err></div>
+    <div data-body class="hidden">
+      <div class="hero"><h1>Review your <span class="grad-text">storyboard</span></h1><p>Every step and every word of narration is editable. Reorder, delete or add steps before recording.</p></div>
+      <div class="card">
+        <div class="grid2">
+          <div class="field"><label class="f" for="sbTitle">Video title</label><input class="input" id="sbTitle"></div>
+          <div class="field"><label class="f" for="sbTagline">Tagline (intro card)</label><input class="input" id="sbTagline"></div>
+        </div>
+        <div class="field"><label class="f" for="sbOutro">End card line</label><input class="input" id="sbOutro"></div>
+      </div>
+      <div class="stats"><div class="stat"><b id="statSteps">0</b>steps</div><div class="stat"><b id="statDur">0:00</b>estimated length</div><div class="stat"><b id="statWords">0</b>words of narration</div></div>
+      <div class="steps" id="steps"></div>
+      <button class="add-step" id="btnAddStep" style="margin-top:12px;width:100%"><span data-icon="plus"></span>Add step</button>
+      <div class="actions"><button class="btn ghost" data-go="plan"><span data-icon="back"></span>Back to plan</button><button class="btn lg" id="btnRender"><span data-icon="play"></span>Record &amp; render video</button></div>
+    </div>
+  </section>
+
+  <!-- 4 · VIDEO -->
+  <section class="view" data-view="video">
+    <div class="work card hidden" data-work="render"></div>
+    <div data-err></div>
+    <div data-body class="hidden">
+      <div class="hero"><span class="done-badge"><span data-icon="check"></span>Your demo is ready</span><h1 id="vTitle">Demo video</h1></div>
+      <div class="player"><video id="player" controls playsinline preload="metadata"></video></div>
+      <div class="actions">
+        <div class="right"><a class="btn" id="dlVideo" download><span data-icon="download"></span>Download MP4</a><a class="btn ghost" id="dlSrt" download><span data-icon="download"></span>Captions (.srt)</a></div>
+        <div class="right"><button class="btn ghost" data-go="storyboard">Edit &amp; re-render</button><button class="btn ghost" id="btnNew">New project</button></div>
+      </div>
+    </div>
+  </section>
+</main>
+</div>
+
+<!-- settings drawer -->
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-label="Settings" aria-hidden="true" inert>
+  <header><div><h2>Settings</h2><p>Saved automatically in this browser.</p></div><button class="icon-btn" id="btnClose" aria-label="Close settings" style="transform:none"></button></header>
+  <div class="body">
+    <div class="sect" id="modelSect">
+      <h3>AI model</h3><p>The model that reads your project and writes the storyboard and narration.</p>
+      <div class="providers" id="providers"></div>
+      <div class="field" id="baseField"><label class="f" for="baseUrl" id="baseLabel">Server URL</label><input class="input mono" id="baseUrl" spellcheck="false"></div>
+      <div class="field" id="keyField"><label class="f" for="apiKey">API key</label>
+        <div class="pw"><input class="input mono" id="apiKey" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your key"><button class="icon-btn eye" id="btnEye" aria-label="Show key" style="width:34px;height:34px;transform:translateY(-50%)"></button></div></div>
+      <div class="field"><label class="f" for="model">Model</label>
+        <div class="row-btn"><input class="input mono" id="model" list="modelList" placeholder="model name" spellcheck="false" autocomplete="off"><button class="btn ghost sm" id="btnTest"><span data-icon="refresh"></span>Test &amp; load</button></div>
+        <datalist id="modelList"></datalist><div class="models" id="modelChips"></div>
+        <div class="conn" id="conn"></div></div>
+    </div>
+    <div class="sect">
+      <h3>Voice-over</h3><p>How the narration is spoken.</p>
+      <div class="field"><label class="f">Voice engine</label>
+        <div class="seg" id="engine"><input type="radio" name="engine" id="eEdge" value="edge"><label for="eEdge">Edge neural</label><input type="radio" name="engine" id="eSys" value="system"><label for="eSys">Offline (system)</label><input type="radio" name="engine" id="eOai" value="openai"><label for="eOai">OpenAI</label></div>
+        <div id="engineHint" style="color:var(--faint);font-size:12px;margin-top:8px"></div></div>
+      <div class="field"><label class="f" for="voice">Voice name (optional)</label><input class="input" id="voice" placeholder="Automatic for the chosen language"></div>
+      <div class="field"><label class="f" for="speed">Speaking speed</label><div class="range-row"><input type="range" id="speed" min="0.7" max="1.4" step="0.05" value="1"><output id="speedOut">1.0×</output></div></div>
+    </div>
+    <div class="sect"><h3>Privacy</h3><p>API keys are kept only in this browser's local storage and sent to the Demo Maker server running on your computer. Nothing is uploaded except your chosen model provider's requests.</p></div>
+    <span class="saved" id="saved">✓ Saved</span>
+  </div>
+</aside>
+<div id="toasts" role="status" aria-live="polite"></div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="rgb(99,102,241)"/><stop offset=".55" stop-color="rgb(139,92,246)"/><stop offset="1" stop-color="rgb(34,211,238)"/></linearGradient>
+    <g id="logo-mark">
+      <rect x="2" y="2" width="36" height="36" rx="11" fill="url(#lg)"/>
+      <rect x="2" y="2" width="36" height="36" rx="11" fill="none" stroke="rgba(255,255,255,.28)"/>
+      <path d="M15 11.5v17a1 1 0 0 0 1.5.86l14-8.5a1 1 0 0 0 0-1.72l-14-8.5A1 1 0 0 0 15 11.5z" fill="#fff"/>
+      <path class="spark" d="M30 4l1.2 3.3L34.5 8.5l-3.3 1.2L30 13l-1.2-3.3L25.5 8.5l3.3-1.2z" fill="#fff"/>
+    </g>
+  </defs>
+</svg>
+
+<script>
+const $ = id => document.getElementById(id);
+const ICONS = {
+  folder:'<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  upload:'<path d="M12 16V4M7 9l5-5 5 5M4 20h16"/>', download:'<path d="M12 4v12M7 11l5 5 5-5M4 20h16"/>',
+  arrow:'<path d="M5 12h14M12 5l7 7-7 7"/>', back:'<path d="M19 12H5M12 19l-7-7 7-7"/>', check:'<path d="M20 6 9 17l-5-5"/>', plus:'<path d="M12 5v14M5 12h14"/>',
+  trash:'<path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/>', up:'<path d="m18 15-6-6-6 6"/>', down:'<path d="m6 9 6 6 6-6"/>', chevron:'<path d="m9 6 6 6-6 6"/>',
+  x:'<path d="M18 6 6 18M6 6l12 12"/>', play:'<path d="M7 4l13 8-13 8z" fill="currentColor"/>', refresh:'<path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/>',
+  alert:'<path d="M12 3 2 20h20zM12 10v4M12 17h.01"/>', info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>', shield:'<path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/>',
+  eye:'<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>', eyeoff:'<path d="M3 3l18 18M10.6 5.1A9.7 9.7 0 0 1 12 5c6 0 10 7 10 7a17 17 0 0 1-3.2 3.9M6.4 6.5C3.6 8.3 2 12 2 12s4 7 10 7c1.5 0 2.9-.4 4.1-1"/>',
+  mic:'<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>', film:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4"/>',
+  cpu:'<rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/>', edit:'<path d="M4 20h4L20 8l-4-4L4 16z"/>',
+  lock:'<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>', globe:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+  sparkle:'<path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/>', search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>', cc:'<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 10.5a2 2 0 1 0 0 3M17 10.5a2 2 0 1 0 0 3"/>',
+  user:'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>', logout:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>', mail:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
+  sliders:'<path d="M4 6h8M16 6h4M4 12h2M10 12h10M4 18h12M20 18h0"/><circle cx="14" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
+};
+const icon = (n, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n] || ''}</svg>`;
+document.querySelectorAll('[data-icon]').forEach(el => { if (el.matches('.feat-ic,.band-ic,.tick')) el.innerHTML = icon(el.dataset.icon); else el.outerHTML = icon(el.dataset.icon, el.className); });
+$('btnSettings').innerHTML = icon('sliders'); $('btnClose').innerHTML = icon('x'); $('btnEye').innerHTML = icon('eye');
+
+// favicon from the same logo
+const logoSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="rgb(99,102,241)"/><stop offset="1" stop-color="rgb(34,211,238)"/></linearGradient></defs><rect x="2" y="2" width="36" height="36" rx="11" fill="url(#g)"/><path d="M15 11.5v17a1 1 0 0 0 1.5.86l14-8.5a1 1 0 0 0 0-1.72l-14-8.5A1 1 0 0 0 15 11.5z" fill="#fff"/></svg>`;
+document.head.insertAdjacentHTML('beforeend', `<link rel="icon" href="data:image/svg+xml,${encodeURIComponent(logoSvg)}">`);
+
+/* ================= state ================= */
+const LANGS = {en:'English',hi:'Hindi',es:'Spanish',fr:'French',de:'German',pt:'Portuguese',it:'Italian',ja:'Japanese',ko:'Korean',zh:'Chinese',ar:'Arabic',ru:'Russian',ta:'Tamil',te:'Telugu',bn:'Bengali',mr:'Marathi',gu:'Gujarati'};
+const TONES = ['friendly','professional','energetic','calm','playful'];
+const ACTIONS = ['goto','click','fill','select','press','hover','scroll','wait'];
+const PROVIDERS = {
+  ollama:{name:'Ollama', sub:'Local & private', glyph:'⬡', bg:'linear-gradient(135deg,#334155,#64748b)', base:'http://localhost:11434', needsKey:false, model:''},
+  gemini:{name:'Gemini', sub:'Google AI', glyph:'✦', bg:'linear-gradient(135deg,#2563eb,#a855f7)', base:'', needsKey:true, model:'gemini-2.0-flash'},
+  openai:{name:'OpenAI', sub:'GPT models', glyph:'◎', bg:'linear-gradient(135deg,#059669,#10b981)', base:'https://api.openai.com/v1', needsKey:true, model:'gpt-4o-mini'},
+};
+const EXAMPLES = [
+  ['Quick tour', 'A friendly 30-second tour of the main features for a new user.'],
+  ['Investor pitch', 'An energetic 45-second walkthrough for investors. Focus on the core value and how fast it is to use.'],
+  ['Tutorial', 'A calm step-by-step tutorial showing how to get started, with clear explanations.'],
+  ['README demo', 'A short, punchy demo for the project README that shows the main workflow.'],
+];
+const DEFAULTS = {provider:'ollama', providers:{ollama:{base:'', model:'', key:''}, gemini:{base:'', model:'', key:''}, openai:{base:'', model:'', key:''}},
+  tts:{engine:'edge', voice:'', speed:1}, opts:{length:60, tone:'friendly', language:'en', cursor:true, zoom:true, subs:true, cards:true, music:'none'}, path:'', desc:'', src:'path'};
+let S = structuredClone(DEFAULTS), STORE_KEY = null;
+// Settings (including API keys) are stored per account, so two people sharing a browser never see each other's keys.
+function loadState(key) {
+  STORE_KEY = key; let saved = null;
+  try {
+    saved = JSON.parse(localStorage.getItem(key) || 'null');
+    if (!saved) { const old = localStorage.getItem('demo-maker-v2'); if (old) { saved = JSON.parse(old); localStorage.removeItem('demo-maker-v2'); } } // adopt pre-accounts settings once
+  } catch { saved = null; }
+  S = saved ? {...DEFAULTS, ...saved, providers:{...DEFAULTS.providers, ...saved.providers}, tts:{...DEFAULTS.tts, ...saved.tts}, opts:{...DEFAULTS.opts, ...saved.opts}} : structuredClone(DEFAULTS);
+}
+const persist = () => { if (!STORE_KEY) return; try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch {} };
+const prov = () => S.providers[S.provider];
+let connState = {};   // provider -> {ok, count, error}
+let job = null, logN = 0, planV = 0, sbV = 0, outV = 0, zipFile = null, view = 'project', maxStep = 0, timer = null, runLogs = [], stageName = '';
+
+/* ================= helpers ================= */
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function toast(msg, kind = 'info', ms = 5200) {
+  const t = document.createElement('div'); t.className = `toast ${kind}`;
+  t.innerHTML = icon(kind === 'error' ? 'alert' : kind === 'ok' ? 'check' : 'info') + `<span>${esc(msg)}</span>`;
+  $('toasts').appendChild(t);
+  setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 300); }, ms);
+}
+function invalid(el, msg) { el.classList.remove('invalid'); void el.offsetWidth; el.classList.add('invalid'); el.focus?.(); toast(msg, 'error'); setTimeout(() => el.classList.remove('invalid'), 800); }
+async function api(path, body, method = 'POST') {
+  const r = await fetch(path, {method, headers: body instanceof FormData || body === undefined ? {} : {'Content-Type':'application/json'},
+    body: body instanceof FormData ? body : body === undefined ? undefined : JSON.stringify(body)});
+  const data = await r.json().catch(() => ({}));
+  if (r.status === 401 && !path.startsWith('/api/auth/')) onSessionExpired();
+  if (!r.ok) throw new Error(typeof data.detail === 'string' ? data.detail : r.statusText || 'Request failed');
+  return data;
+}
+const fmtTime = s => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`;
+
+/* ================= stepper & views ================= */
+const STEPS = [['project','Project'],['plan','Plan'],['storyboard','Storyboard'],['video','Video']];
+function renderStepper() {
+  const idx = STEPS.findIndex(s => s[0] === view);
+  $('stepper').innerHTML = STEPS.map(([id, label], i) => {
+    const cls = i === idx ? 'active' : i < idx || i <= maxStep && i !== idx ? 'done' : '';
+    const dot = cls === 'done' ? icon('check') : i + 1;
+    return (i ? `<span class="link ${i <= idx || i <= maxStep ? 'on' : ''}"></span>` : '') +
+      `<button class="step ${cls}" data-step="${id}" ${i === idx ? 'aria-current="step"' : ''} ${cls === 'done' ? '' : 'tabindex="-1"'}><span class="dot">${dot}</span><span class="t">${label}</span></button>`;
+  }).join('');
+}
+$('stepper').addEventListener('click', e => {
+  const b = e.target.closest('.step.done'); if (!b || busy()) return; go(b.dataset.step);
+});
+function go(v) {
+  view = v; maxStep = Math.max(maxStep, STEPS.findIndex(s => s[0] === v));
+  document.querySelectorAll('.view').forEach(el => el.classList.toggle('active', el.dataset.view === v));
+  renderStepper(); window.scrollTo({top:0, behavior:'smooth'});
+}
+document.addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b) go(b.dataset.go); });
+const busy = () => !!timer;
+
+/* ================= settings drawer ================= */
+function openSettings(focusModel) {
+  $('drawer').classList.add('open'); $('drawer').inert = false; $('drawer').setAttribute('aria-hidden', 'false'); $('scrim').classList.add('open');
+  if (focusModel) { const el = $('modelSect'); el.scrollIntoView({block:'start'}); [$('model'), $('apiKey')].forEach(i => { i.classList.remove('hl'); void i.offsetWidth; i.classList.add('hl'); }); setTimeout(() => (prov().key || !PROVIDERS[S.provider].needsKey ? $('model') : $('apiKey')).focus(), 350); }
+  if (S.provider === 'ollama' && !connState.ollama) testConnection(true);
+}
+function closeSettings() { $('drawer').classList.remove('open'); $('drawer').inert = true; $('drawer').setAttribute('aria-hidden', 'true'); $('scrim').classList.remove('open'); }
+['btnSettings','modelChip'].forEach(id => $(id).onclick = () => openSettings());
+$('openSettings2').onclick = e => { e.preventDefault(); openSettings(); };
+$('btnClose').onclick = $('scrim').onclick = closeSettings;
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSettings(); });
+
+function buildProviders() {
+  $('providers').innerHTML = Object.entries(PROVIDERS).map(([id, p]) =>
+    `<label class="prov"><input type="radio" name="prov" value="${id}" ${S.provider === id ? 'checked' : ''}><div class="pi" style="background:${p.bg}">${p.glyph}</div><b>${p.name}</b><small>${p.sub}</small></label>`).join('');
+  $('providers').onchange = e => { S.provider = e.target.value; persist(); syncProviderFields(); testConnection(true); };
+}
+function syncProviderFields() {
+  const p = PROVIDERS[S.provider], c = prov();
+  $('keyField').classList.toggle('hidden', !p.needsKey);
+  $('baseField').classList.toggle('hidden', S.provider === 'gemini');
+  $('baseLabel').textContent = S.provider === 'ollama' ? 'Ollama server URL' : 'API base URL (optional)';
+  $('baseUrl').placeholder = p.base; $('baseUrl').value = c.base || '';
+  $('apiKey').value = c.key || ''; $('model').value = c.model || p.model; if (!c.model) c.model = p.model;
+  $('model').placeholder = S.provider === 'ollama' ? 'e.g. llama3:8b (click Test & load)' : p.model;
+  renderConn(); renderChips(); updateChip(); updateEngineHint();
+}
+function renderConn() {
+  const st = connState[S.provider], el = $('conn');
+  if (!st) { el.innerHTML = `<span class="status-dot"></span><span>Not tested yet</span>`; return; }
+  if (st.busy) { el.innerHTML = `<span class="status-dot busy"></span><span>Connecting…</span>`; return; }
+  const small = /:(0\.5|1|1\.5|2|3)b\b/i.test($('model').value);
+  el.innerHTML = st.ok
+    ? `<span class="status-dot ok"></span><span>Connected · ${st.models.length} model${st.models.length === 1 ? '' : 's'} available${small ? ' · <span style="color:var(--warn)">small models give weaker storyboards</span>' : ''}</span>`
+    : `<span class="status-dot bad"></span><span style="color:#fecdd3">${esc(st.error)}</span>`;
+}
+function renderChips() {
+  const st = connState[S.provider], el = $('modelChips');
+  el.innerHTML = ''; $('modelList').innerHTML = '';
+  (st?.models || []).forEach(m => { $('modelList').insertAdjacentHTML('beforeend', `<option value="${esc(m)}">`);
+    const b = document.createElement('button'); b.className = 'tag' + (m === prov().model ? ' sel' : ''); b.textContent = m; b.type = 'button';
+    b.onclick = () => { prov().model = m; $('model').value = m; persist(); flashSaved(); renderChips(); renderConn(); updateChip(); };
+    el.appendChild(b); });
+}
+async function testConnection(quiet) {
+  const p = S.provider, c = prov();
+  if (PROVIDERS[p].needsKey && !c.key) { connState[p] = {ok:false, error:'Enter your API key, then press Test & load.'}; renderConn(); return; }
+  connState[p] = {busy:true}; renderConn(); updateChip();
+  try {
+    const {models} = await api('/api/models', {llm:{provider:p, api_key:c.key, base_url:c.base, model:c.model}});
+    connState[p] = {ok:true, models};
+    if (!c.model || (p === 'ollama' && !models.includes(c.model))) { c.model = models[0] || c.model; $('model').value = c.model || ''; persist(); }
+    if (!quiet) toast(`Connected to ${PROVIDERS[p].name}: ${models.length} models found`, 'ok');
+  } catch (e) {
+    connState[p] = {ok:false, error: p === 'ollama' ? `${e.message} Is Ollama running?` : e.message};
+  }
+  if (p === S.provider) { renderConn(); renderChips(); updateChip(); }
+}
+$('btnTest').onclick = () => testConnection(false);
+$('btnEye').onclick = () => { const show = $('apiKey').type === 'password'; $('apiKey').type = show ? 'text' : 'password'; $('btnEye').innerHTML = icon(show ? 'eyeoff' : 'eye'); };
+let savedTimer; function flashSaved() { $('saved').classList.add('show'); clearTimeout(savedTimer); savedTimer = setTimeout(() => $('saved').classList.remove('show'), 1400); }
+$('baseUrl').oninput = () => { prov().base = $('baseUrl').value.trim(); connState[S.provider] = undefined; persist(); flashSaved(); renderConn(); };
+$('apiKey').oninput = () => { prov().key = $('apiKey').value.trim(); persist(); flashSaved(); updateChip(); };
+$('apiKey').onchange = () => { if (prov().key) testConnection(true); };
+$('model').oninput = () => { prov().model = $('model').value.trim(); persist(); flashSaved(); renderChips(); renderConn(); updateChip(); };
+function updateChip() {
+  const c = prov(), st = connState[S.provider], ready = llmReady();
+  $('chipName').textContent = ready ? `${PROVIDERS[S.provider].name} · ${c.model}` : 'Choose a model';
+  $('chipDot').className = 'status-dot ' + (st?.busy ? 'busy' : st?.ok ? 'ok' : st && !st.ok ? 'bad' : '');
+}
+const llmReady = () => !!prov().model && (!PROVIDERS[S.provider].needsKey || !!prov().key);
+
+function buildEngine() {
+  $('engine').querySelector(`input[value="${S.tts.engine}"]`).checked = true;
+  $('engine').onchange = e => { S.tts.engine = e.target.value; persist(); flashSaved(); updateEngineHint(); };
+  $('voice').value = S.tts.voice; $('voice').oninput = () => { S.tts.voice = $('voice').value.trim(); persist(); flashSaved(); };
+  $('speed').value = S.tts.speed; const so = () => $('speedOut').textContent = (+$('speed').value).toFixed(2).replace(/0$/, '') + '×'; so();
+  $('speed').oninput = () => { S.tts.speed = +$('speed').value; so(); persist(); flashSaved(); };
+}
+function updateEngineHint() {
+  $('engineHint').textContent = {edge:'Free, natural voices in 17 languages. Needs an internet connection.', system:'Works fully offline using your computer\'s installed voices.',
+    openai:'High-quality voices. Needs the OpenAI provider selected above with an API key.'}[S.tts.engine];
+}
+
+/* ================= project view ================= */
+$('examples').innerHTML = EXAMPLES.map(([l, t]) => `<button type="button" class="tag" data-t="${esc(t)}">${esc(l)}</button>`).join('');
+$('examples').onclick = e => { const b = e.target.closest('.tag'); if (b) { $('desc').value = b.dataset.t; S.desc = b.dataset.t; persist(); $('desc').focus(); } };
+$('language').innerHTML = Object.entries(LANGS).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
+$('tone').innerHTML = TONES.map(t => `<input type="radio" name="tone" id="t_${t}" value="${t}"><label for="t_${t}">${t[0].toUpperCase() + t.slice(1)}</label>`).join('');
+function loadProject() {
+  $('path').value = S.path; $('desc').value = S.desc; $('length').value = S.opts.length; $('lengthOut').textContent = S.opts.length + ' s';
+  $('language').value = S.opts.language; document.querySelector(`#tone input[value="${S.opts.tone}"]`).checked = true;
+  ['cursor','zoom','subs','cards'].forEach(k => $(k).checked = S.opts[k]);
+  document.querySelector(`#music input[value="${S.opts.music}"]`).checked = true; $('musicFile').classList.toggle('hidden', S.opts.music !== 'upload');
+  (S.src === 'zip' ? $('srcZip') : $('srcPath')).checked = true; syncSrc();
+}
+function syncSrc() { const zip = $('srcZip').checked; S.src = zip ? 'zip' : 'path'; $('srcPathBox').classList.toggle('hidden', zip); $('srcZipBox').classList.toggle('hidden', !zip); }
+document.querySelectorAll('input[name=src]').forEach(r => r.onchange = () => { syncSrc(); persist(); });
+$('path').oninput = () => { S.path = $('path').value; persist(); }; $('desc').oninput = () => { S.desc = $('desc').value; persist(); };
+$('length').oninput = () => { S.opts.length = +$('length').value; $('lengthOut').textContent = S.opts.length + ' s'; persist(); };
+$('language').onchange = () => { S.opts.language = $('language').value; persist(); };
+$('tone').onchange = e => { S.opts.tone = e.target.value; persist(); };
+['cursor','zoom','subs','cards'].forEach(k => $(k).onchange = () => { S.opts[k] = $(k).checked; persist(); });
+$('music').onchange = e => { S.opts.music = e.target.value; $('musicFile').classList.toggle('hidden', e.target.value !== 'upload'); persist(); };
+const dz = $('dropzone');
+function setZip(f) { if (!f) return; if (!/\.zip$/i.test(f.name)) return toast('Please choose a .zip file', 'error'); zipFile = f; $('dropText').innerHTML = `<b>${esc(f.name)}</b> · ${(f.size / 1048576).toFixed(1)} MB<br><small>Click to choose a different file</small>`; }
+dz.onclick = () => $('zip').click(); dz.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('zip').click(); } };
+$('zip').onchange = () => setZip($('zip').files[0]);
+['dragenter','dragover'].forEach(n => dz.addEventListener(n, e => { e.preventDefault(); dz.classList.add('over'); }));
+['dragleave','drop'].forEach(n => dz.addEventListener(n, e => { e.preventDefault(); dz.classList.remove('over'); }));
+dz.addEventListener('drop', e => setZip(e.dataTransfer.files[0]));
+
+function settings() {
+  const c = prov();
+  return {llm:{provider:S.provider, model:c.model, api_key:c.key, base_url:c.base}, language:S.opts.language, tone:S.opts.tone, length:S.opts.length,
+    tts:{...S.tts}, polish:{cursor:S.opts.cursor, zoom:S.opts.zoom}, subtitles:S.opts.subs, cards:S.opts.cards, music:S.opts.music};
+}
+
+/* ================= work panels ================= */
+const PHASES = {
+  analyze:[['Reading your project', /Analyzing/, 'Scanning files and README'], ['Building a run plan', /Plan ready|LLM analysis failed/, 'Asking the model how to run it']],
+  storyboard:[['Installing dependencies', /\$ (pip|npm|yarn|pnpm|poetry|bundle|composer)|isolated Python/, 'This can take a few minutes the first time'], ['Starting your app', /background\)|Waiting for/, 'Waiting for it to respond'],
+    ['Exploring the pages', /Inspecting/, 'Finding buttons, forms and links'], ['Writing the storyboard', /Writing the storyboard/, 'The model is drafting steps and narration']],
+  render:[['Recording the voice-over', /Generating voice-over|voice \d+\/\d+/, 'Turning each line of narration into speech'], ['Recording the app', /Recording the app/, 'Driving a real browser, in sync with the voice'],
+    ['Mixing audio', /Mixing audio/, 'Placing narration and music'], ['Rendering video', /Rendering video/, 'Zoom, captions and encoding'], ['Adding title & end cards', /title and end cards|Done:/, 'Almost there']],
+};
+const WORK_TEXT = {analyze:['Analyzing your project', 'Understanding what it is and how to run it.'], storyboard:['Bringing your app to life', 'Starting it up and writing the script.'], render:['Making your video', 'Recording takes about as long as the finished video.']};
+const STAGE_VIEW = {analyze:'plan', storyboard:'storyboard', render:'video'};
+function buildWork(stage) {
+  const el = document.querySelector(`[data-work="${stage}"]`), [t, s] = WORK_TEXT[stage];
+  el.innerHTML = `<div class="ring-wrap"><div class="ring"></div><div class="logo-mini"><svg viewBox="0 0 40 40"><use href="#logo-mark"/></svg></div></div>
+    <h2>${t}</h2><p class="sub">${s}</p>
+    <ul class="phases">${PHASES[stage].map(([n]) => `<li><span class="b">${icon('check')}</span><span><span class="pn">${n}</span><small></small></span></li>`).join('')}</ul>
+    <div class="bar"><i></i></div>
+    <div class="actions" style="justify-content:center;margin-top:22px"><button class="btn ghost sm danger" data-stop>${icon('x')}Cancel</button></div>
+    <button class="logtoggle" data-logtoggle>Show details</button><pre class="logbox"></pre>`;
+  el.querySelector('[data-stop]').onclick = async () => { try { await api(`/api/jobs/${job}/stop`, {}); toast('Stopping…', 'info', 2500); } catch (e) { toast(e.message, 'error'); } };
+  el.querySelector('[data-logtoggle]').onclick = ev => { const box = el.querySelector('.logbox'); box.classList.toggle('open'); ev.target.textContent = box.classList.contains('open') ? 'Hide details' : 'Show details'; box.scrollTop = box.scrollHeight; };
+}
+Object.keys(PHASES).forEach(buildWork);
+function updatePhases(stage) {
+  const el = document.querySelector(`[data-work="${stage}"]`), ph = PHASES[stage];
+  let cur = 0; runLogs.forEach(l => ph.forEach(([, re], i) => { if (re.test(l)) cur = Math.max(cur, i); }));
+  const detail = [...runLogs].reverse().find(l => !/^\[(app|cmd)\]/.test(l) && /voice \d+\/\d+|Recorded|Waiting|\$ /.test(l));
+  el.querySelectorAll('.phases li').forEach((li, i) => {
+    li.className = i < cur ? 'done' : i === cur ? 'active' : '';
+    li.querySelector('small').textContent = i === cur ? (/voice \d+\/\d+/.test(detail || '') && stage === 'render' && i === 0 ? detail.trim().replace('voice', 'Line') : ph[i][2]) : '';
+  });
+  el.querySelector('.bar i').style.width = Math.min(96, ((cur + .5) / ph.length) * 100) + '%';
+  el.querySelectorAll('.logbox').forEach(b => { b.textContent = runLogs.join('\n'); b.scrollTop = b.scrollHeight; });
+}
+function setState(v, state, msg, extra) {
+  const sec = document.querySelector(`.view[data-view="${v}"]`), work = sec.querySelector('.work'), body = sec.querySelector('[data-body]'), err = sec.querySelector('[data-err]');
+  work.classList.toggle('hidden', state !== 'work'); body.classList.toggle('hidden', state !== 'body' && state !== 'errbody');
+  err.innerHTML = '';
+  if (state === 'error' || state === 'errbody') {
+    const llm = /model|API key|ollama|openai|gemini|JSON|reach/i.test(msg);
+    err.innerHTML = `<div class="callout err" style="margin:0 0 18px"><span>${icon('alert')}</span><div><b>That didn't work.</b><div style="margin-top:4px;word-break:break-word">${esc(msg)}</div>
+      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap"><button class="btn ghost sm" data-back>${icon('back')}Go back</button>${llm ? `<button class="btn ghost sm" data-set>${icon('sliders')}Open AI settings</button>` : ''}</div></div></div>`;
+    err.querySelector('[data-back]').onclick = () => go(extra || 'project'); err.querySelector('[data-set]')?.addEventListener('click', () => openSettings(true));
+  }
+}
+
+/* ================= flow ================= */
+function resetRun() { logN = 0; runLogs = []; }
+$('btnAnalyze').onclick = async () => {
+  const zip = S.src === 'zip';
+  if (!zip && !$('path').value.trim()) return invalid($('path'), 'Enter the folder path of your project first.');
+  if (zip && !zipFile) return invalid($('dropzone'), 'Choose a .zip file of your project first.');
+  if (!llmReady()) { toast('Choose an AI model first. It writes your storyboard.', 'info'); return openSettings(true); }
+  persist();
+  const fd = new FormData(); fd.append('description', $('desc').value);
+  if (zip) fd.append('project_zip', zipFile); else fd.append('project_path', $('path').value);
+  try {
+    const j = await api('/api/jobs', fd); job = j.id; resetRun(); planV = sbV = outV = 0; maxStep = 0;
+    go('plan'); setState('plan', 'work'); updatePhases('analyze'); stageName = 'analyze';
+    await api(`/api/jobs/${job}/analyze`, {settings: settings(), description: $('desc').value}); poll();
+  } catch (e) { toast(e.message, 'error'); go('project'); }
+};
+function fillPlan(p) {
+  $('appBadge').textContent = (p.app_name || '?').trim()[0]?.toUpperCase() || '?'; $('appName').textContent = p.app_name || 'Your app'; $('appTag').textContent = p.tagline || '';
+  $('appSummary').textContent = p.summary || ''; $('appFeatures').innerHTML = (p.features || []).map(f => `<span class="tag static">${esc(f)}</span>`).join('');
+  const n = $('planNotes'); n.classList.toggle('hidden', !p.notes); n.lastElementChild.textContent = p.notes || '';
+  $('pStart').value = p.start; $('pUrl').value = p.url; $('pInstall').value = p.install.join('\n'); $('pSeed').value = p.seed.join('\n');
+  $('pEnv').value = Object.entries(p.env).map(([k, v]) => `${k}=${v}`).join('\n'); window._plan = p;
+}
+function readPlan() {
+  const lines = id => $(id).value.split('\n').map(s => s.trim()).filter(Boolean), env = {};
+  lines('pEnv').forEach(l => { const i = l.indexOf('='); if (i > 0) env[l.slice(0, i).trim()] = l.slice(i + 1).trim(); });
+  return {...window._plan, start: $('pStart').value.trim(), url: $('pUrl').value.trim(), install: lines('pInstall'), seed: lines('pSeed'), env};
+}
+$('btnStoryboard').onclick = async () => {
+  if (!$('pStart').value.trim()) return invalid($('pStart'), 'Add the command that starts your app.');
+  if (!$('pUrl').value.trim()) return invalid($('pUrl'), 'Add the URL where the app will run.');
+  if (!llmReady()) { toast('Choose an AI model first.', 'info'); return openSettings(true); }
+  try { resetRun(); go('storyboard'); setState('storyboard', 'work'); updatePhases('storyboard'); stageName = 'storyboard';
+    await api(`/api/jobs/${job}/storyboard`, {settings: settings(), plan: readPlan(), description: $('desc').value}); poll(); }
+  catch (e) { go('plan'); toast(e.message, 'error'); }
+};
+
+/* ---- storyboard editor ---- */
+function stepCard(st = {action:'click', target:'', value:'', narration:''}, i = 0) {
+  const d = document.createElement('div'); d.className = 'sb'; d.style.setProperty('--i', i);
+  d.innerHTML = `<div class="num"></div><div><div class="row"><select class="input" aria-label="Action">${ACTIONS.map(a => `<option ${a === st.action ? 'selected' : ''}>${a}</option>`).join('')}</select>
+    <input class="input mono" data-f="target" placeholder="selector or URL" aria-label="Target" spellcheck="false"><input class="input mono" data-f="value" placeholder="value" aria-label="Value" spellcheck="false"></div>
+    <textarea class="input" aria-label="Narration" placeholder="What the narrator says during this step"></textarea><div class="meta"><span data-w></span><span data-s></span></div></div>
+    <div class="ctl"><button class="mini" data-a="up" aria-label="Move up">${icon('up')}</button><button class="mini" data-a="down" aria-label="Move down">${icon('down')}</button><button class="mini del" data-a="del" aria-label="Delete step">${icon('trash')}</button></div>`;
+  d.querySelector('[data-f=target]').value = st.target; d.querySelector('[data-f=value]').value = st.value; d.querySelector('textarea').value = st.narration;
+  d.querySelector('.ctl').onclick = e => { const a = e.target.closest('[data-a]')?.dataset.a; if (!a) return;
+    if (a === 'del') d.remove(); if (a === 'up' && d.previousElementSibling) d.parentNode.insertBefore(d, d.previousElementSibling); if (a === 'down' && d.nextElementSibling) d.parentNode.insertBefore(d.nextElementSibling, d); refreshSteps(); };
+  d.addEventListener('input', refreshSteps); return d;
+}
+function refreshSteps() {
+  let words = 0, secs = 0; const cards = [...$('steps').children];
+  cards.forEach((c, i) => { c.querySelector('.num').textContent = i + 1; const w = c.querySelector('textarea').value.trim().split(/\s+/).filter(Boolean).length; words += w;
+    const s = w / (2.4 * S.tts.speed) + 1.2; secs += s; c.querySelector('[data-w]').textContent = `${w} words`; c.querySelector('[data-s]').textContent = `≈ ${s.toFixed(1)} s`; });
+  $('statSteps').textContent = cards.length; $('statWords').textContent = words; $('statDur').textContent = fmtTime(secs + (S.opts.cards ? 6 : 0));
+}
+function fillStoryboard(sb) {
+  $('sbTitle').value = sb.title; $('sbTagline').value = sb.tagline; $('sbOutro').value = sb.outro;
+  $('steps').innerHTML = ''; sb.steps.forEach((s, i) => $('steps').appendChild(stepCard(s, i))); refreshSteps();
+}
+$('btnAddStep').onclick = () => { const c = stepCard(); $('steps').appendChild(c); refreshSteps(); c.scrollIntoView({behavior:'smooth', block:'center'}); c.querySelector('select').focus(); };
+function readStoryboard() {
+  return {title:$('sbTitle').value, tagline:$('sbTagline').value, outro:$('sbOutro').value,
+    steps:[...$('steps').children].map(c => ({action:c.querySelector('select').value, target:c.querySelector('[data-f=target]').value.trim(), value:c.querySelector('[data-f=value]').value, narration:c.querySelector('textarea').value}))};
+}
+$('btnRender').onclick = async () => {
+  const sb = readStoryboard();
+  if (!sb.steps.length) return toast('Add at least one step first.', 'error');
+  try {
+    if (S.opts.music === 'upload') { if (!$('musicFile').files[0]) return invalid($('musicFile'), 'Choose a music file, or switch music to Off.'); const fd = new FormData(); fd.append('music', $('musicFile').files[0]); await api(`/api/jobs/${job}/music`, fd); }
+    resetRun(); go('video'); setState('video', 'work'); updatePhases('render'); stageName = 'render';
+    await api(`/api/jobs/${job}/render`, {settings: settings(), storyboard: sb}); poll();
+  } catch (e) { go('storyboard'); toast(e.message, 'error'); }
+};
+$('btnNew').onclick = () => { job = null; maxStep = 0; $('player').removeAttribute('src'); go('project'); };
+
+/* ---- result ---- */
+function confetti() {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const wrap = document.createElement('div'); wrap.className = 'confetti'; const cols = ['#6366f1','#8b5cf6','#22d3ee','#34d399','#fbbf24','#fb7185'];
+  for (let i = 0; i < 70; i++) { const p = document.createElement('i'); p.style.left = Math.random() * 100 + 'vw'; p.style.background = cols[i % cols.length];
+    p.style.setProperty('--dx', (Math.random() * 240 - 120) + 'px'); p.style.setProperty('--r', (Math.random() * 720 - 360) + 'deg'); p.style.animationDelay = Math.random() * .6 + 's'; wrap.appendChild(p); }
+  document.body.appendChild(wrap); setTimeout(() => wrap.remove(), 3600);
+}
+function showResult(out) {
+  $('vTitle').textContent = $('sbTitle').value || 'Demo video'; $('player').src = out.video + '?v=' + outV + '#t=0.3'; $('dlVideo').href = out.video; $('dlSrt').href = out.srt;
+  $('dlVideo').download = ($('sbTitle').value || 'demo').replace(/[^\w-]+/g, '_') + '.mp4';
+}
+
+/* ---- polling ---- */
+function poll() { if (!timer) timer = setInterval(tick, 1000); renderStepper(); tick(); }
+async function tick() {
+  if (!job) { clearInterval(timer); timer = null; return; }
+  let j; try { j = await api(`/api/jobs/${job}?since=${logN}`, undefined, 'GET'); } catch { return; }
+  runLogs.push(...j.logs); logN = j.log_n; const stage = j.stage || stageName, v = STAGE_VIEW[stage];
+  if (j.status === 'busy') { updatePhases(stage); return; }
+  clearInterval(timer); timer = null;
+  if (j.plan && j.plan_v !== planV) { planV = j.plan_v; fillPlan(j.plan); }
+  if (j.storyboard && j.sb_v !== sbV) { sbV = j.sb_v; fillStoryboard(j.storyboard); }
+  if (j.output && j.out_v !== outV) { outV = j.out_v; showResult(j.output); }
+  if (j.status === 'error') {
+    const back = stage === 'analyze' ? 'project' : stage === 'storyboard' ? 'plan' : 'storyboard';
+    setState(v, stage === 'analyze' && j.plan ? 'errbody' : 'error', j.error, back); go(v);
+  } else if (stage === 'analyze') { setState('plan', 'body'); go('plan'); }
+  else if (stage === 'storyboard') { setState('storyboard', 'body'); go('storyboard'); }
+  else if (stage === 'render') { if (runLogs.some(l => /^Stopped\./.test(l))) { setState('storyboard', 'body'); go('storyboard'); toast('Render stopped.', 'info'); }
+    else { setState('video', 'body'); go('video'); confetti(); } }
+  renderStepper();
+}
+
+/* start-up, routing and accounts live in /static/auth.js */
+</script>
+<script src="/static/auth.js"></script>
+</body>
+</html>
